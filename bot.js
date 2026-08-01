@@ -23,7 +23,7 @@ const GEMINI_ENDPOINT =
   'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/+$/, '');
 const PORT = process.env.PORT || 3000;
-const COOLDOWN_MS = Number(process.env.COOLDOWN_MS || 3000);
+const COOLDOWN_MS = Number(process.env.COOLDOWN_MS || 6000);
 const MAX_HISTORY = Number(process.env.MAX_HISTORY || 24);
 const ALLOWED_CHANNELS = (process.env.ALLOWED_CHANNELS || '')
   .split(',')
@@ -106,6 +106,18 @@ function extractText(content) {
   return String(content ?? '');
 }
 
+function parseRetryMs(data) {
+  const msg = data?.error?.message || '';
+  const m = msg.match(/retry in\s+([\d.]+)\s*s/i);
+  if (m) return Math.ceil(parseFloat(m[1]) * 1000) + 500;
+  const delay = data?.error?.retryDelay || data?.error?.details?.[0]?.retryDelay;
+  if (typeof delay === 'string') {
+    const d = delay.match(/^([\d.]+)s$/);
+    if (d) return Math.ceil(parseFloat(d[1]) * 1000) + 500;
+  }
+  return 0;
+}
+
 async function callGemini(messages) {
   const body = {
     model: GEMINI_MODEL,
@@ -116,7 +128,7 @@ async function callGemini(messages) {
   let lastError;
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) {
-      const waitMs = [2000, 5000][attempt - 1] || 8000;
+      const waitMs = lastError?.retryAfterMs || [2000, 5000][attempt - 1] || 8000;
       await new Promise((resolve) => setTimeout(resolve, waitMs));
     }
     try {
@@ -133,6 +145,10 @@ async function callGemini(messages) {
         lastError = new Error(
           `Gemini API ${res.status}: ${data?.error?.message || JSON.stringify(data)}`,
         );
+        if (res.status === 429) {
+          lastError.retryAfterMs = parseRetryMs(data);
+          if (lastError.retryAfterMs) console.log(`[gemini] rate-limited, retrying in ${lastError.retryAfterMs}ms`);
+        }
         if (res.status === 429 || res.status >= 500) continue;
         throw lastError;
       }
