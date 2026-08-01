@@ -1,0 +1,18 @@
+{
+  "name": "big-pickle-discord",
+  "version": "1.0.0",
+  "description": "Big Pickle AI — a Discord bot with personality, powered by the free Gemini API and hosted on Render's free tier.",
+  "type": "module",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "test": "node --check bot.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^17.0.0"
+  }
+}
