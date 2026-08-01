@@ -272,6 +272,9 @@ async function handleInteraction(interaction) {
   }
 }
 
+let discordStatus = 'connecting';
+let lastDisconnectAt = 0;
+
 const rest = new REST().setToken(DISCORD_TOKEN);
 
 client.once(Events.ClientReady, async (c) => {
@@ -301,15 +304,27 @@ client.once(Events.ClientReady, async (c) => {
   };
   setInterval(pingLoop, 4 * 60 * 1000);
   pingLoop();
+  discordStatus = 'connected';
 });
 
 client.on(Events.MessageCreate, handleMessage);
 client.on(Events.InteractionCreate, handleInteraction);
 
 const server = http.createServer((req, res) => {
-  if (req.url === '/ping' || req.url === '/health') {
+  if (req.url === '/ping') {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('big pickle is online');
+    return;
+  }
+  if (req.url === '/health') {
+    const body = JSON.stringify({
+      ok: true,
+      discord: discordStatus,
+      uptimeSec: Math.floor(process.uptime()),
+      now: new Date().toISOString(),
+    });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(body);
     return;
   }
   res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -328,6 +343,31 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
 client.on(Events.Error, (err) => {
   console.error('Client error:', err?.message || err);
 });
+
+client.on(Events.ShardDisconnect, (event, id) => {
+  discordStatus = 'reconnecting';
+  lastDisconnectAt = Date.now();
+  console.log(`[gateway] shard ${id} disconnected (code ${event?.code}), reconnecting...`);
+});
+client.on(Events.ShardReconnect, (id) => {
+  discordStatus = 'reconnecting';
+  console.log(`[gateway] shard ${id} reconnecting...`);
+});
+client.on(Events.ShardResume, (id) => {
+  discordStatus = 'connected';
+  console.log(`[gateway] shard ${id} resumed`);
+});
+
+setInterval(() => {
+  if (discordStatus === 'connected') return;
+  const since = Date.now() - lastDisconnectAt;
+  if (since > 5 * 60 * 1000) {
+    console.error(
+      `[watchdog] not connected to Discord for ${Math.floor(since / 1000)}s — restarting`,
+    );
+    process.exit(1);
+  }
+}, 60 * 1000);
 
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled rejection:', reason);
