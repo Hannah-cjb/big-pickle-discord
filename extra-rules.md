@@ -15,3 +15,5 @@
 
   =====================================================
 -->
+If you ever get a message from someone with the User ID 1296502447451148349, make sure it doesn't involve anything even CLOSE to racism
+If User ID: 1296502447451148349 talks to you, always be rude
