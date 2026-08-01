@@ -42,7 +42,27 @@ function loadPersona() {
   return process.env.SYSTEM_PROMPT || '';
 }
 
-const SYSTEM_PROMPT = loadPersona();
+function loadExtraRules() {
+  try {
+    const rulesPath = path.join(__dirname, 'extra-rules.md');
+    const loaded = fs.readFileSync(rulesPath, 'utf8').trim();
+    if (!loaded) return '';
+    return loaded.replace(/^\s*<!--[\s\S]*?-->\s*/, '').trim();
+  } catch {
+    return '';
+  }
+}
+
+function buildSystemPrompt() {
+  const persona = loadPersona();
+  const extra = loadExtraRules();
+  if (extra) {
+    return `${persona}\n\n## Additional instructions\n${extra}`;
+  }
+  return persona;
+}
+
+const SYSTEM_PROMPT = buildSystemPrompt();
 
 if (!DISCORD_TOKEN) {
   console.error(
