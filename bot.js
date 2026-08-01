@@ -24,7 +24,8 @@ const GEMINI_ENDPOINT =
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/+$/, '');
 const PORT = process.env.PORT || 3000;
 const COOLDOWN_MS = Number(process.env.COOLDOWN_MS || 6000);
-const MAX_HISTORY = Number(process.env.MAX_HISTORY || 24);
+const MAX_HISTORY = Number(process.env.MAX_HISTORY || 12);
+const MAX_TOKENS = Number(process.env.MAX_TOKENS || 600);
 const ALLOWED_CHANNELS = (process.env.ALLOWED_CHANNELS || '')
   .split(',')
   .map((s) => s.trim())
@@ -123,7 +124,7 @@ async function callGemini(messages) {
     model: GEMINI_MODEL,
     messages,
     temperature: 0.8,
-    max_tokens: 1000,
+    max_tokens: MAX_TOKENS,
   };
   let lastError;
   for (let attempt = 0; attempt < 3; attempt++) {
