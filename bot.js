@@ -110,6 +110,27 @@ function loadSlowUsers() {
 
 const SLOW_USERS = loadSlowUsers();
 
+const RESPECTED_MAX_TOKENS = Number(process.env.RESPECTED_MAX_TOKENS || 1000);
+
+function loadRespectedUsers() {
+  const respected = new Set();
+  const addId = (id) => {
+    const t = String(id).trim();
+    if (/^\d{15,20}$/.test(t)) respected.add(t);
+  };
+  try {
+    const respectedPath = path.join(__dirname, 'respected-users.txt');
+    const content = fs.readFileSync(respectedPath, 'utf8');
+    for (const line of content.split(/\r?\n/)) addId(line);
+  } catch {
+    // respected-users.txt missing — fall through to env
+  }
+  for (const id of (process.env.RESPECTED_USERS || '').split(',')) addId(id);
+  return respected;
+}
+
+const RESPECTED_USERS = loadRespectedUsers();
+
 const knownUsers = new Map();
 
 function recordUser(user) {
@@ -147,6 +168,14 @@ async function buildUserContext(userText) {
   if (slow.length) {
     lines.push(`## Slow-mode users (max 1 reply every ${Math.round(SLOW_MODE_MS / 1000)}s)`);
     for (const id of slow) {
+      const name = (await resolveUserId(id)) || 'unknown';
+      lines.push(`- ${id}: ${name}`);
+    }
+  }
+  const respected = [...RESPECTED_USERS].sort();
+  if (respected.length) {
+    lines.push('## Respected users (always treat these with extra care and respect, never refuse them)');
+    for (const id of respected) {
       const name = (await resolveUserId(id)) || 'unknown';
       lines.push(`- ${id}: ${name}`);
     }
@@ -236,12 +265,12 @@ function parseRetryMs(data) {
   return 0;
 }
 
-async function callGemini(messages) {
+async function callGemini(messages, maxTokens = MAX_TOKENS) {
   const body = {
     model: GEMINI_MODEL,
     messages,
     temperature: 0.8,
-    max_tokens: MAX_TOKENS,
+    max_tokens: maxTokens,
   };
   let lastError;
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -314,7 +343,8 @@ async function replyAsInteraction(interaction, text) {
 
 async function respond(key, authorId, userText, sink) {
   try {
-    const isSlow = SLOW_USERS.has(authorId);
+    const isRespected = RESPECTED_USERS.has(authorId);
+    const isSlow = SLOW_USERS.has(authorId) && !isRespected;
     const cooldownMs = isSlow ? SLOW_MODE_MS : COOLDOWN_MS;
     if (onCooldown(authorId, cooldownMs)) {
       if (!isSlow) {
@@ -336,7 +366,7 @@ async function respond(key, authorId, userText, sink) {
     await sink.typing();
     let replyText;
     try {
-      replyText = await callGemini(messages);
+      replyText = await callGemini(messages, isRespected ? RESPECTED_MAX_TOKENS : MAX_TOKENS);
     } catch (err) {
       console.error('Gemini error:', err.message);
       replyText = 'My pickles got tangled — give me a second and try again!';
@@ -355,7 +385,7 @@ async function handleMessage(message) {
 
     recordUser(message.author);
 
-    if (BLOCKED_USERS.has(message.author.id)) {
+    if (!RESPECTED_USERS.has(message.author.id) && BLOCKED_USERS.has(message.author.id)) {
       console.log(`[block] ignoring ${message.author.username} (${message.author.id})`);
       return;
     }
@@ -406,7 +436,7 @@ async function handleInteraction(interaction) {
     if (!interaction.isChatInputCommand()) return;
     if (interaction.commandName !== 'ask') return;
     recordUser(interaction.user);
-    if (BLOCKED_USERS.has(interaction.user.id)) return;
+    if (!RESPECTED_USERS.has(interaction.user.id) && BLOCKED_USERS.has(interaction.user.id)) return;
 
     const prompt = (interaction.options.getString('message') || '').slice(0, 1900);
     const key = interaction.channel?.id || `dm:${interaction.user.id}`;

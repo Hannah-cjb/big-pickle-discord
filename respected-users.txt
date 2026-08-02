@@ -1,0 +1,11 @@
+<!--
+  ALWAYS RESPECT USERS
+
+  Discord user IDs listed below are top-priority. Big Pickle will:
+    - Always reply to them (even if they're on the blocked or slow lists)
+    - Give them extra-warm, respectful treatment
+    - Allow longer replies (RESPECTED_MAX_TOKENS, default 1000)
+
+  One ID per line. Edit, save, push — Render auto-deploys.
+  To remove someone, delete their line. This comment block is ignored.
+-->
