@@ -34,7 +34,10 @@ const ALLOWED_CHANNELS = (process.env.ALLOWED_CHANNELS || '')
 function loadPersona() {
   try {
     const personaPath = path.join(__dirname, 'persona.md');
-    const loaded = fs.readFileSync(personaPath, 'utf8').trim();
+    const loaded = fs
+      .readFileSync(personaPath, 'utf8')
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .trim();
     if (loaded) return loaded;
   } catch {
     // persona.md missing — fall through to env
@@ -45,9 +48,12 @@ function loadPersona() {
 function loadExtraRules() {
   try {
     const rulesPath = path.join(__dirname, 'extra-rules.md');
-    const loaded = fs.readFileSync(rulesPath, 'utf8').trim();
+    const loaded = fs
+      .readFileSync(rulesPath, 'utf8')
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .trim();
     if (!loaded) return '';
-    return loaded.replace(/^\s*<!--[\s\S]*?-->\s*/, '').trim();
+    return loaded;
   } catch {
     return '';
   }
