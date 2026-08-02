@@ -64,6 +64,25 @@ function buildSystemPrompt() {
 
 const SYSTEM_PROMPT = buildSystemPrompt();
 
+function loadBlockedUsers() {
+  const blocked = new Set();
+  const addId = (id) => {
+    const t = String(id).trim();
+    if (/^\d{15,20}$/.test(t)) blocked.add(t);
+  };
+  try {
+    const blockedPath = path.join(__dirname, 'blocked-users.txt');
+    const content = fs.readFileSync(blockedPath, 'utf8');
+    for (const line of content.split(/\r?\n/)) addId(line);
+  } catch {
+    // blocked-users.txt missing — fall through to env
+  }
+  for (const id of (process.env.BLOCKED_USERS || '').split(',')) addId(id);
+  return blocked;
+}
+
+const BLOCKED_USERS = loadBlockedUsers();
+
 if (!DISCORD_TOKEN) {
   console.error(
     'Missing DISCORD_TOKEN. Set it in the Render environment (or .env) before starting.',
@@ -247,6 +266,11 @@ async function handleMessage(message) {
     if (message.author.bot) return;
     if (!message.content?.trim()) return;
 
+    if (BLOCKED_USERS.has(message.author.id)) {
+      console.log(`[block] ignoring ${message.author.username} (${message.author.id})`);
+      return;
+    }
+
     if (message.channel?.partial) {
       try {
         await message.channel.fetch();
@@ -292,6 +316,7 @@ async function handleInteraction(interaction) {
   try {
     if (!interaction.isChatInputCommand()) return;
     if (interaction.commandName !== 'ask') return;
+    if (BLOCKED_USERS.has(interaction.user.id)) return;
 
     const prompt = (interaction.options.getString('message') || '').slice(0, 1900);
     const key = interaction.channel?.id || `dm:${interaction.user.id}`;

@@ -1,0 +1,10 @@
+<!--
+  BLOCKED USERS
+
+  Big Pickle will never respond to (or even count messages from) any Discord
+  user ID listed below. One ID per line. Edit, save, push — Render auto-deploys.
+
+  To unblock someone, delete their line (or the whole file).
+  This comment block is ignored.
+-->
+1296502447451148349
