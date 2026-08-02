@@ -110,6 +110,56 @@ function loadSlowUsers() {
 
 const SLOW_USERS = loadSlowUsers();
 
+const knownUsers = new Map();
+
+function recordUser(user) {
+  if (!user?.id) return;
+  const name = user.globalName || user.username;
+  if (name && !knownUsers.has(user.id)) knownUsers.set(user.id, name);
+}
+
+async function resolveUserId(id) {
+  if (knownUsers.has(id)) return knownUsers.get(id);
+  try {
+    const user = await client.users.fetch(id);
+    const name = user.globalName || user.username;
+    knownUsers.set(id, name);
+    return name;
+  } catch {
+    return null;
+  }
+}
+
+async function buildUserContext(userText) {
+  for (const m of String(userText || '').match(/\d{15,20}/g) || []) {
+    await resolveUserId(m);
+  }
+  const lines = [];
+  const blocked = [...BLOCKED_USERS].sort();
+  const slow = [...SLOW_USERS].sort();
+  if (blocked.length) {
+    lines.push('## Blocked users (never respond to these)');
+    for (const id of blocked) {
+      const name = (await resolveUserId(id)) || 'unknown';
+      lines.push(`- ${id}: ${name}`);
+    }
+  }
+  if (slow.length) {
+    lines.push(`## Slow-mode users (max 1 reply every ${Math.round(SLOW_MODE_MS / 1000)}s)`);
+    for (const id of slow) {
+      const name = (await resolveUserId(id)) || 'unknown';
+      lines.push(`- ${id}: ${name}`);
+    }
+  }
+  if (knownUsers.size) {
+    lines.push('## Known Discord users (ID to username)');
+    const entries = [...knownUsers.entries()].slice(0, 100).sort((a, b) => a[1].localeCompare(b[1]));
+    for (const [id, name] of entries) lines.push(`- ${id}: ${name}`);
+  }
+  if (!lines.length) return '';
+  return `\n\n=== LIVE USER CONTEXT — use this to answer questions about users, IDs, blocked, or slow-mode lists ===\n${lines.join('\n')}`;
+}
+
 if (!DISCORD_TOKEN) {
   console.error(
     'Missing DISCORD_TOKEN. Set it in the Render environment (or .env) before starting.',
@@ -278,8 +328,9 @@ async function respond(key, authorId, userText, sink) {
     }
     addToHistory(key, 'user', userText);
     const history = getHistory(key);
+    const userContext = await buildUserContext(userText);
     const messages = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: SYSTEM_PROMPT + userContext },
       ...history.slice(-MAX_HISTORY),
     ];
     await sink.typing();
@@ -301,6 +352,8 @@ async function handleMessage(message) {
   try {
     if (message.author.bot) return;
     if (!message.content?.trim()) return;
+
+    recordUser(message.author);
 
     if (BLOCKED_USERS.has(message.author.id)) {
       console.log(`[block] ignoring ${message.author.username} (${message.author.id})`);
@@ -352,6 +405,7 @@ async function handleInteraction(interaction) {
   try {
     if (!interaction.isChatInputCommand()) return;
     if (interaction.commandName !== 'ask') return;
+    recordUser(interaction.user);
     if (BLOCKED_USERS.has(interaction.user.id)) return;
 
     const prompt = (interaction.options.getString('message') || '').slice(0, 1900);
