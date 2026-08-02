@@ -23,7 +23,7 @@ const GEMINI_ENDPOINT =
   'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/+$/, '');
 const PORT = process.env.PORT || 3000;
-const COOLDOWN_MS = Number(process.env.COOLDOWN_MS || 6000);
+const COOLDOWN_MS = Number(process.env.COOLDOWN_MS || 0);
 const MAX_HISTORY = Number(process.env.MAX_HISTORY || 12);
 const MAX_TOKENS = Number(process.env.MAX_TOKENS || 600);
 const ALLOWED_CHANNELS = (process.env.ALLOWED_CHANNELS || '')
