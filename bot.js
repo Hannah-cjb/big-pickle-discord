@@ -258,12 +258,15 @@ async function replyAsInteraction(interaction, text) {
 
 async function respond(key, authorId, userText, sink) {
   try {
-    const cooldownMs = SLOW_USERS.has(authorId) ? SLOW_MODE_MS : COOLDOWN_MS;
+    const isSlow = SLOW_USERS.has(authorId);
+    const cooldownMs = isSlow ? SLOW_MODE_MS : COOLDOWN_MS;
     if (onCooldown(authorId, cooldownMs)) {
-      const now = Date.now();
-      if (now - (lastMarinatedAt.get(authorId) || 0) > 10000) {
-        lastMarinatedAt.set(authorId, now);
-        await sink.send('Big Pickle is marinating — give me a second and try again!');
+      if (!isSlow) {
+        const now = Date.now();
+        if (now - (lastMarinatedAt.get(authorId) || 0) > 10000) {
+          lastMarinatedAt.set(authorId, now);
+          await sink.send('Big Pickle is marinating — give me a second and try again!');
+        }
       }
       return;
     }
