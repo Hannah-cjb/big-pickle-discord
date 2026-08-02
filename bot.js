@@ -83,6 +83,27 @@ function loadBlockedUsers() {
 
 const BLOCKED_USERS = loadBlockedUsers();
 
+const SLOW_MODE_MS = Number(process.env.SLOW_MODE_MS || 15000);
+
+function loadSlowUsers() {
+  const slow = new Set();
+  const addId = (id) => {
+    const t = String(id).trim();
+    if (/^\d{15,20}$/.test(t)) slow.add(t);
+  };
+  try {
+    const slowPath = path.join(__dirname, 'slow-users.txt');
+    const content = fs.readFileSync(slowPath, 'utf8');
+    for (const line of content.split(/\r?\n/)) addId(line);
+  } catch {
+    // slow-users.txt missing — fall through to env
+  }
+  for (const id of (process.env.SLOW_USERS || '').split(',')) addId(id);
+  return slow;
+}
+
+const SLOW_USERS = loadSlowUsers();
+
 if (!DISCORD_TOKEN) {
   console.error(
     'Missing DISCORD_TOKEN. Set it in the Render environment (or .env) before starting.',
@@ -109,6 +130,7 @@ const client = new Client({
 
 const conversationMemory = new Map();
 const lastUsedAt = new Map();
+const lastMarinatedAt = new Map();
 
 function conversationKey(channel, authorId) {
   return channel.id || `dm:${authorId}`;
@@ -130,10 +152,10 @@ function addToHistory(key, role, content) {
   }
 }
 
-function onCooldown(authorId) {
+function onCooldown(authorId, ms = COOLDOWN_MS) {
   const now = Date.now();
   const last = lastUsedAt.get(authorId) || 0;
-  if (now - last < COOLDOWN_MS) return true;
+  if (now - last < ms) return true;
   lastUsedAt.set(authorId, now);
   return false;
 }
@@ -236,8 +258,13 @@ async function replyAsInteraction(interaction, text) {
 
 async function respond(key, authorId, userText, sink) {
   try {
-    if (onCooldown(authorId)) {
-      await sink.send('Big Pickle is marinating — give me a second and try again!');
+    const cooldownMs = SLOW_USERS.has(authorId) ? SLOW_MODE_MS : COOLDOWN_MS;
+    if (onCooldown(authorId, cooldownMs)) {
+      const now = Date.now();
+      if (now - (lastMarinatedAt.get(authorId) || 0) > 10000) {
+        lastMarinatedAt.set(authorId, now);
+        await sink.send('Big Pickle is marinating — give me a second and try again!');
+      }
       return;
     }
     addToHistory(key, 'user', userText);

@@ -1,0 +1,9 @@
+<!--
+  SLOW MODE USERS
+
+  Any Discord user ID listed below gets Big Pickle's response rate capped at
+  one reply every SLOW_MODE_MS (default 15 seconds, or 15000). One ID per line.
+
+  Edit, save, push — Render auto-deploys. To remove someone from slow mode,
+  delete their line. This comment block is ignored.
+-->
