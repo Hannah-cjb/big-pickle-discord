@@ -131,12 +131,24 @@ function loadRespectedUsers() {
 
 const RESPECTED_USERS = loadRespectedUsers();
 
-const WATCHED_CHANNELS = new Set(
-  (process.env.WATCH_CHANNELS || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean),
-);
+function loadWatchedChannels() {
+  const watched = new Set();
+  const addId = (id) => {
+    const t = String(id).trim();
+    if (/^\d{15,20}$/.test(t)) watched.add(t);
+  };
+  try {
+    const watchedPath = path.join(__dirname, 'watched-channels.txt');
+    const content = fs.readFileSync(watchedPath, 'utf8');
+    for (const line of content.split(/\r?\n/)) addId(line);
+  } catch {
+    // watched-channels.txt missing — fall through to env
+  }
+  for (const id of (process.env.WATCH_CHANNELS || '').split(',')) addId(id);
+  return watched;
+}
+
+const WATCHED_CHANNELS = loadWatchedChannels();
 
 const knownUsers = new Map();
 

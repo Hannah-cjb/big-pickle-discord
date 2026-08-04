@@ -1,0 +1,10 @@
+<!--
+  WATCHED CHANNELS (auto-respond)
+
+  Discord channel IDs listed below make Big Pickle respond to EVERY message
+  sent in that channel. One ID per line. Edit, save, push — Render auto-deploys.
+
+  To stop watching a channel, delete its line. To add on the fly without a
+  redeploy, use /respond and /unrespond in Discord instead (admins only).
+  This comment block is ignored.
+-->
