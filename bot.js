@@ -131,6 +131,13 @@ function loadRespectedUsers() {
 
 const RESPECTED_USERS = loadRespectedUsers();
 
+const WATCHED_CHANNELS = new Set(
+  (process.env.WATCH_CHANNELS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
+);
+
 const knownUsers = new Map();
 
 function recordUser(user) {
@@ -414,7 +421,9 @@ async function handleMessage(message) {
       }
     }
 
-    if (!isDm && !mentioned && !repliedToBot) return;
+    if (!isDm && !mentioned && !repliedToBot && !WATCHED_CHANNELS.has(message.channel.id)) {
+      return;
+    }
 
     console.log(
       `[trigger] ${message.author.username} in #${message.channel.id}${isDm ? ' (DM)' : ''}: ${message.content.slice(0, 80)}`,
@@ -444,6 +453,30 @@ async function handleInteraction(interaction) {
       await interaction.reply(
         'Fresh jar, fresh pickle! I forgot everything we said — new conversation, go ahead.',
       );
+      return;
+    }
+
+    if (interaction.commandName === 'respond' || interaction.commandName === 'unrespond') {
+      const isAdmin =
+        interaction.memberPermissions?.has('ManageGuild') ||
+        interaction.memberPermissions?.has('Administrator');
+      if (!isAdmin) {
+        await interaction.reply('Only server admins can manage where I respond.');
+        return;
+      }
+      const channel = interaction.options.getChannel('channel');
+      const id = channel?.id;
+      if (!id) {
+        await interaction.reply('Pick a text channel in this server.');
+        return;
+      }
+      if (interaction.commandName === 'respond') {
+        WATCHED_CHANNELS.add(id);
+        await interaction.reply(`Got it — I'll respond to every message in <#${id}>.`);
+      } else {
+        WATCHED_CHANNELS.delete(id);
+        await interaction.reply(`Okay, I'll stop auto-responding in <#${id}>.`);
+      }
       return;
     }
 
@@ -485,11 +518,28 @@ client.once(Events.ClientReady, async (c) => {
   const resetCommand = new SlashCommandBuilder()
     .setName('reset')
     .setDescription('Forget this conversation and start fresh');
+  const respondCommand = new SlashCommandBuilder()
+    .setName('respond')
+    .setDescription('Auto-respond to every message in a channel')
+    .addChannelOption((opt) =>
+      opt.setName('channel').setDescription('Channel to watch').setRequired(true),
+    );
+  const unrespondCommand = new SlashCommandBuilder()
+    .setName('unrespond')
+    .setDescription('Stop auto-responding in a channel')
+    .addChannelOption((opt) =>
+      opt.setName('channel').setDescription('Channel to stop watching').setRequired(true),
+    );
   try {
     await rest.put(Routes.applicationCommands(c.user.id), {
-      body: [askCommand.toJSON(), resetCommand.toJSON()],
+      body: [
+        askCommand.toJSON(),
+        resetCommand.toJSON(),
+        respondCommand.toJSON(),
+        unrespondCommand.toJSON(),
+      ],
     });
-    console.log('Registered /ask and /reset slash commands');
+    console.log('Registered /ask, /reset, /respond, /unrespond slash commands');
   } catch (err) {
     console.error('Failed to register slash commands:', err.message);
   }
