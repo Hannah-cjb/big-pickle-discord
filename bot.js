@@ -185,11 +185,15 @@ async function resolveUserId(id) {
   }
 }
 
-async function buildUserContext(userText) {
+async function buildUserContext(userText, authorId) {
   for (const m of String(userText || '').match(/\d{15,20}/g) || []) {
     await resolveUserId(m);
   }
   const lines = [];
+  if (authorId) {
+    const me = await resolveUserId(authorId);
+    lines.push(`## Current user (the person asking right now): ${me || authorId} (${authorId})`);
+  }
   const blocked = [...BLOCKED_USERS].sort();
   const slow = [...SLOW_USERS].sort();
   if (blocked.length) {
@@ -259,10 +263,10 @@ function getHistory(key) {
   return conversationMemory.get(key) || [];
 }
 
-function addToHistory(key, role, content) {
+function addToHistory(key, role, content, speakerId) {
   if (!content) return;
   const history = getHistory(key);
-  history.push({ role, content: String(content) });
+  history.push({ role, content: String(content), speakerId });
   while (history.length > MAX_HISTORY) history.shift();
   conversationMemory.set(key, history);
   if (conversationMemory.size > 200) {
@@ -390,12 +394,20 @@ async function respond(key, authorId, userText, sink) {
       }
       return;
     }
-    addToHistory(key, 'user', userText);
+    addToHistory(key, 'user', userText, authorId);
     const history = getHistory(key);
-    const userContext = await buildUserContext(userText);
+    const userContext = await buildUserContext(userText, authorId);
+    const attributed = history.slice(-MAX_HISTORY).map((m) => {
+      if (m.role === 'user' && m.speakerId) {
+        const name = knownUsers.get(m.speakerId);
+        const label = name ? `${name} (${m.speakerId})` : m.speakerId;
+        return { ...m, content: `[${label}]: ${m.content}` };
+      }
+      return m;
+    });
     const messages = [
       { role: 'system', content: SYSTEM_PROMPT + userContext },
-      ...history.slice(-MAX_HISTORY),
+      ...attributed,
     ];
     await sink.typing();
     let replyText;
