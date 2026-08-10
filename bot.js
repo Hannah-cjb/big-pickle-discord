@@ -401,9 +401,10 @@ async function respond(key, authorId, userText, sink) {
       if (m.role === 'user' && m.speakerId) {
         const name = knownUsers.get(m.speakerId);
         const label = name ? `${name} (${m.speakerId})` : m.speakerId;
-        return { ...m, content: `[${label}]: ${m.content}` };
+        return { role: 'user', content: `[${label}]: ${m.content}` };
       }
-      return m;
+      const { speakerId, ...rest } = m;
+      return rest;
     });
     const messages = [
       { role: 'system', content: SYSTEM_PROMPT + userContext },
