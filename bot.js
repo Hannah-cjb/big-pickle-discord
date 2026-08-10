@@ -150,7 +150,22 @@ function loadWatchedChannels() {
 
 const WATCHED_CHANNELS = loadWatchedChannels();
 
-const knownUsers = new Map();
+function loadKnownUsers() {
+  const map = new Map();
+  try {
+    const usersPath = path.join(__dirname, 'known-users.txt');
+    const content = fs.readFileSync(usersPath, 'utf8');
+    for (const line of content.split(/\r?\n/)) {
+      const m = line.trim().match(/^(\d{15,20})[\s:-]+(.+)$/);
+      if (m) map.set(m[1], m[2].trim());
+    }
+  } catch {
+    // known-users.txt missing
+  }
+  return map;
+}
+
+const knownUsers = loadKnownUsers();
 
 function recordUser(user) {
   if (!user?.id) return;

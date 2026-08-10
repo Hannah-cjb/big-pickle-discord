@@ -1,0 +1,13 @@
+<!--
+  KNOWN USERS (name directory)
+
+  Map Discord user IDs to names so Big Pickle knows who people are, even if
+  they've never messaged. Format: USER_ID NAME (ID first, then their name —
+  anything after the ID becomes the name). One per line.
+
+  Edit, save, push — Render auto-deploys. Names here override auto-detected
+  usernames. Any line that doesn't start with a user ID is ignored.
+
+  Example:
+  1396370445917225026 Alex
+-->
