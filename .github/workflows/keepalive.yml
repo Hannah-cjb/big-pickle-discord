@@ -1,0 +1,18 @@
+name: Keep Streamlit App Awake
+
+on:
+  schedule:
+    - cron: '0 */10 * * *'
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create empty commit to reset Streamlit sleep timer
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          git commit --allow-empty -m "ci: keep-alive (Streamlit Community Cloud)"
+          git push origin HEAD:main
