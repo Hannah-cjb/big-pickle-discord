@@ -15,12 +15,12 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN || '';
+// The configured key is a Groq key (gsk_*), which uses the OpenAI-compatible API.
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'llama-3.3-70b-versatile';
 const GEMINI_ENDPOINT =
-  process.env.GEMINI_ENDPOINT ||
-  'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
+  process.env.GEMINI_ENDPOINT || 'https://api.groq.com/openai/v1/chat/completions';
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/+$/, '');
 const PORT = process.env.PORT || 3000;
 const COOLDOWN_MS = Number(process.env.COOLDOWN_MS || 0);
@@ -227,18 +227,6 @@ async function buildUserContext(userText, authorId) {
   return `\n\n=== LIVE USER CONTEXT — use this to answer questions about users, IDs, blocked, or slow-mode lists ===\n${lines.join('\n')}`;
 }
 
-if (!DISCORD_TOKEN) {
-  console.error(
-    'Missing DISCORD_TOKEN. Set it in the Render environment (or .env) before starting.',
-  );
-  process.exit(1);
-}
-if (!GEMINI_API_KEY) {
-  console.error(
-    'Missing GEMINI_API_KEY. Get a free key at https://aistudio.google.com/apikey',
-  );
-  process.exit(1);
-}
 
 const client = new Client({
   intents: [
@@ -664,13 +652,15 @@ const isMain =
 
 if (isMain) {
   server.listen(PORT, () => console.log(`HTTP keep-alive server listening on ${PORT}`));
-  client
-    .login(DISCORD_TOKEN)
-    .catch((err) => {
+  if (!DISCORD_TOKEN) {
+    discordStatus = 'not configured';
+    console.error('Discord token is not configured; health endpoint remains available.');
+  } else {
+    client.login(DISCORD_TOKEN).catch((err) => {
+      discordStatus = 'authentication failed';
       console.error('Failed to log in:', err.message);
-      server.close();
-      process.exit(1);
     });
+  }
 }
 
 export { callGemini, extractText, chunkText, loadPersona, SYSTEM_PROMPT };
