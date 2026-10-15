@@ -601,8 +601,8 @@ const server = http.createServer((req, res) => {
     res.end(body);
     return;
   }
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('Big Pickle AI is running.');
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Big Pickle AI</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#101612;color:#edf5eb;font:16px system-ui,-apple-system,sans-serif}.card{width:min(420px,calc(100% - 48px));padding:32px;border:1px solid #385039;border-radius:20px;background:#182119;box-shadow:0 18px 60px #0007}h1{margin:0 0 10px;font-size:28px}p{margin:0;color:#bdd0bb;line-height:1.55}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;background:#8dd35f}</style></head><body><main class="card"><h1>Big Pickle AI</h1><p><span class="dot"></span>Service is online.</p></main></body></html>`);
 });
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
