@@ -1,5 +1,5 @@
 # STATUS.md — Live Infrastructure (auto-updated)
-_Last updated: 2026-10-15T02:45:15.121Z_
+_Last updated: 2026-10-15T02:50:28.045Z_
 
 ## Container
 - **Name**: vk-big-pickle-discord
@@ -12,9 +12,9 @@ _Last updated: 2026-10-15T02:45:15.121Z_
 ## App
 - **Name**: big-pickle-discord
 - **Subdomain**: big-pickle-discord.vibekit.bot
-- **DB Status**: error
+- **DB Status**: running
 - **Health Failures**: 0
-- **Last Healthy**: never
+- **Last Healthy**: 2026-10-15T02:49:43.115+00:00
 
 
 ## Host
